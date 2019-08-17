@@ -1,0 +1,165 @@
+{
+    "style": "looby",
+    "extensions": [],
+    "fixities": [],
+    "formatting": {
+        "op": {
+            ",": {
+                "force-linebreak": false,
+                "spaces": "after",
+                "linebreaks": "before"
+            },
+            "=": {
+                "force-linebreak": false,
+                "spaces": "both",
+                "linebreaks": "after"
+            },
+            "default": {
+                "force-linebreak": false,
+                "spaces": "both",
+                "linebreaks": "before"
+            },
+            ". in expression": {
+                "force-linebreak": false,
+                "spaces": "both",
+                "linebreaks": "before"
+            },
+            "-> in expression": {
+                "force-linebreak": false,
+                "spaces": "both",
+                "linebreaks": "after"
+            },
+            ". in type": {
+                "force-linebreak": false,
+                "spaces": "after",
+                "linebreaks": "after"
+            },
+            "$": {
+                "force-linebreak": false,
+                "spaces": "both",
+                "linebreaks": "after"
+            },
+            "record in pattern": {
+                "force-linebreak": false,
+                "spaces": "after",
+                "linebreaks": "after"
+            },
+            "record": {
+                "force-linebreak": true,
+                "spaces": "after",
+                "linebreaks": "after"
+            }
+        },
+        "group": {
+            "(# in pattern": {
+                "force-linebreak": false,
+                "spaces": "both",
+                "linebreaks": "after"
+            },
+            "( in type": {
+                "force-linebreak": false,
+                "spaces": "none",
+                "linebreaks": "after"
+            },
+            "default": {
+                "force-linebreak": false,
+                "spaces": "both",
+                "linebreaks": "after"
+            },
+            "(# in expression": {
+                "force-linebreak": false,
+                "spaces": "both",
+                "linebreaks": "after"
+            },
+            "[ in type": {
+                "force-linebreak": false,
+                "spaces": "none",
+                "linebreaks": "after"
+            }
+        },
+        "layout": {
+            "infix-app": "try-oneline",
+            "if": "vertical",
+            "import-spec-list": "flex",
+            "con-decls": "vertical",
+            "typesig": "try-oneline",
+            "declaration": "try-oneline",
+            "app": "try-oneline",
+            "let": "vertical",
+            "record": "vertical",
+            "export-spec-list": "vertical",
+            "list-comp": "flex"
+        },
+        "penalty": {
+            "overfull": 10,
+            "indent": 1,
+            "overfull-once": 200,
+            "max-line-length": 80,
+            "linebreak": 100
+        },
+        "indent": {
+            "deriving": 4,
+            "if": "indent-by 4",
+            "let-binds": "align",
+            "import-spec-list": "align-or-indent-by 7",
+            "onside": 4,
+            "where": 2,
+            "typesig": "align",
+            "do": "indent-by 4",
+            "app": "indent-by 4",
+            "case": "indent-by 4",
+            "let-in": "align",
+            "where-binds": "indent-by 2",
+            "let": "align",
+            "export-spec-list": "indent-by 2",
+            "multi-if": "indent-by 2",
+            "class": "indent-by 4"
+        },
+        "align": {
+            "let-binds": false,
+            "where": false,
+            "limits": [
+                10,
+                25
+            ],
+            "case": false,
+            "import-module": true,
+            "import-spec": false,
+            "class": false,
+            "record-fields": false
+        },
+        "options": {
+            "sort-pragmas": true,
+            "flexible-oneline": true,
+            "split-language-pragmas": true,
+            "align-sum-type-decl": true,
+            "sort-import-lists": true,
+            "preserve-vertical-space": true,
+            "sort-imports": [
+                {
+                    "prefixes": [
+                        "Control",
+                        "Data",
+                        "Debug",
+                        "Foreign",
+                        "GHC",
+                        "Numeric",
+                        "Prelude",
+                        "System",
+                        "Text",
+                        "Type",
+                        "Unsafe"
+                    ],
+                    "order": "sorted"
+                },
+                {
+                    "prefixes": [
+                        ""
+                    ],
+                    "order": "sorted"
+                }
+            ]
+        }
+    },
+    "language": "Haskell2010"
+}
