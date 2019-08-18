@@ -8,10 +8,10 @@ import           Data.Csv ( Header, NamedRecord, encodeByName, header )
 import           Data.Csv.Incremental ( NamedBuilder, encodeNamedRecord )
 import           Data.HashMap.Strict as HM
 import           Data.HashSet as HS
-import           Data.Text ( Text )
+import           Data.Text as T
 import           Data.Text.Encoding ( encodeUtf8 )
 
-data Csv = Csv (HS.HashSet Text) [HM.HashMap Text Text]
+data Csv = Csv (HS.HashSet T.Text) [HM.HashMap T.Text T.Text]
 
 instance Semigroup Csv where
     (Csv headers rows) <> (Csv headers' rows') =
@@ -20,7 +20,7 @@ instance Semigroup Csv where
 instance Monoid Csv where
     mempty = Csv mempty mempty
 
-data CsvRow = CsvRow (HS.HashSet Text) (HM.HashMap Text Text)
+data CsvRow = CsvRow (HS.HashSet T.Text) (HM.HashMap T.Text T.Text)
 
 instance Semigroup CsvRow where
     (CsvRow headers row) <> (CsvRow headers' row') =
@@ -47,6 +47,16 @@ toCsv _ = Csv mempty mempty
 objectToCsv :: Object -> Csv
 objectToCsv object = csvRowToCsv $ HM.foldlWithKey' merge mempty object
   where
-    merge :: CsvRow -> Text -> Value -> CsvRow
+    merge :: CsvRow -> T.Text -> Value -> CsvRow
+    merge (CsvRow headers row) key (Bool value) =
+        CsvRow
+            (HS.insert key headers)
+            (HM.insert key (T.pack . show $ value) row)
+    merge (CsvRow headers row) key Null =
+        CsvRow (HS.insert key headers) (HM.insert key mempty row)
+    merge (CsvRow headers row) key (Number value) =
+        CsvRow
+            (HS.insert key headers)
+            (HM.insert key (T.pack . show $ value) row)
     merge (CsvRow headers row) key (String value) =
         CsvRow (HS.insert key headers) (HM.insert key value row)
