@@ -35,3 +35,14 @@ spec = do
         it "returns a single row for a simple object with a string value" $ do
             convert "{\"one\": \"first\", \"two\": \"second\"}"
                 `shouldBe` Right "two,one\r\nsecond,first\r\n"
+
+        it "returns multiple rows for an array of objects" $ do
+            convert
+                "[{\"one\": \"first\"}, {\"one\": \"second\"}, {\"one\": \"third\"}]"
+                `shouldBe` Right "one\r\nfirst\r\nsecond\r\nthird\r\n"
+
+        it "handles arrays of objects of varying shapes" $ do
+            convert
+                "[{\"one\": 1, \"two\": 2}, {\"one\": 11, \"three\": 33}, {\"one\": 111}]"
+                `shouldBe` Right
+                    "two,one,three\r\n2.0,1.0,\r\n,11.0,33.0\r\n,111.0,\r\n"

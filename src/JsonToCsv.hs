@@ -36,13 +36,17 @@ convert :: B.ByteString -> Either String B.ByteString
 convert input = encode . toCsv <$> eitherDecode input
 
 encode :: Csv -> B.ByteString
-encode (Csv headers body) = encodeByName encodedHeaders body
+encode (Csv headers body) = encodeByName encodedHeaders encodedBody
   where
     encodedHeaders = header $ encodeUtf8 <$> HS.toList headers
 
+    emptyRow = const mempty <$> toMap headers
+
+    encodedBody = flip HM.union emptyRow <$> body
+
 toCsv :: Value -> Csv
+toCsv (Array array) = foldMap toCsv array
 toCsv (Object object) = objectToCsv object
-toCsv _ = Csv mempty mempty
 
 objectToCsv :: Object -> Csv
 objectToCsv object = csvRowToCsv $ HM.foldlWithKey' merge mempty object
