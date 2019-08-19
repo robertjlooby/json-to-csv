@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module JsonToCsv
   ( convert
   ) where
@@ -20,18 +22,6 @@ instance Semigroup Csv where
 instance Monoid Csv where
     mempty = Csv mempty mempty
 
-data CsvRow = CsvRow (HS.HashSet T.Text) (HM.HashMap T.Text T.Text)
-
-instance Semigroup CsvRow where
-    (CsvRow headers row) <> (CsvRow headers' row') =
-        CsvRow (headers <> headers') (row <> row')
-
-instance Monoid CsvRow where
-    mempty = CsvRow mempty mempty
-
-csvRowToCsv :: CsvRow -> Csv
-csvRowToCsv (CsvRow headers row) = Csv headers [ row ]
-
 convert :: B.ByteString -> Either String B.ByteString
 convert input = encode . toCsv <$> eitherDecode input
 
@@ -49,18 +39,36 @@ toCsv (Array array) = foldMap toCsv array
 toCsv (Object object) = objectToCsv object
 
 objectToCsv :: Object -> Csv
-objectToCsv object = csvRowToCsv $ HM.foldlWithKey' merge mempty object
+objectToCsv object = HM.foldlWithKey' merge (Csv mempty [ mempty ]) object
   where
-    merge :: CsvRow -> T.Text -> Value -> CsvRow
-    merge (CsvRow headers row) key (Bool value) =
-        CsvRow
+    merge :: Csv -> T.Text -> Value -> Csv
+    merge csv key array @ (Array _) = nest csv key (toCsv array)
+    merge (Csv headers rows) key (Bool value) =
+        Csv
             (HS.insert key headers)
-            (HM.insert key (T.pack . show $ value) row)
-    merge (CsvRow headers row) key Null =
-        CsvRow (HS.insert key headers) (HM.insert key mempty row)
-    merge (CsvRow headers row) key (Number value) =
-        CsvRow
+            (HM.insert key (T.pack . show $ value) <$> rows)
+    merge (Csv headers rows) key Null = Csv (HS.insert key headers) rows
+    merge (Csv headers rows) key (Number value) =
+        Csv
             (HS.insert key headers)
-            (HM.insert key (T.pack . show $ value) row)
-    merge (CsvRow headers row) key (String value) =
-        CsvRow (HS.insert key headers) (HM.insert key value row)
+            (HM.insert key (T.pack . show $ value) <$> rows)
+    merge (Csv headers rows) key (String value) =
+        Csv (HS.insert key headers) (HM.insert key value <$> rows)
+
+nest :: Csv -> Text -> Csv -> Csv
+nest (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows) =
+    Csv
+        (outerHeaders <> nestedInnerHeaders)
+        [ HM.union outerRow innerRow
+        | outerRow <- outerRows, innerRow <- nestedInnerRows
+        ]
+  where
+    nestLabel label = key <> "->" <> label
+
+    nestedInnerHeaders = HS.map nestLabel innerHeaders
+
+    nestInnerRow =
+        HM.foldlWithKey' (\innerRow key' value ->
+                          HM.insert (nestLabel key') value innerRow) mempty
+
+    nestedInnerRows = nestInnerRow <$> innerRows

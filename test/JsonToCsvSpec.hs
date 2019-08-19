@@ -46,3 +46,9 @@ spec = do
                 "[{\"one\": 1, \"two\": 2}, {\"one\": 11, \"three\": 33}, {\"one\": 111}]"
                 `shouldBe` Right
                     "two,one,three\r\n2.0,1.0,\r\n,11.0,33.0\r\n,111.0,\r\n"
+
+        it "handles an array as an object value" $ do
+            convert
+                "{\"top\": \"level\", \"inner\": [{\"item\": \"first\", \"thing\": \"1\"}, {\"item\": \"second\", \"thing\": \"2\"}]}"
+                `shouldBe` Right
+                    "inner->item,top,inner->thing\r\nfirst,level,1\r\nsecond,level,2\r\n"
