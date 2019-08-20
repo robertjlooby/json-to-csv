@@ -6,8 +6,7 @@ module JsonToCsv
 
 import           Data.Aeson ( Object, Value(..), eitherDecode )
 import qualified Data.ByteString.Lazy as B
-import           Data.Csv ( Header, NamedRecord, encodeByName, header )
-import           Data.Csv.Incremental ( NamedBuilder, encodeNamedRecord )
+import           Data.Csv ( encodeByName, header )
 import           Data.HashMap.Strict as HM
 import           Data.HashSet as HS
 import           Data.Text as T
