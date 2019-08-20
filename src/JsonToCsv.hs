@@ -47,14 +47,13 @@ objectToCsv :: Object -> Csv
 objectToCsv = HM.foldlWithKey' merge (Csv mempty [ mempty ])
   where
     merge :: Csv -> T.Text -> Value -> Csv
-    merge csv key array @ (Array _) = nest csv key (toCsv array)
-    merge (Csv headers rows) key (Bool value) =
-        Csv (HS.insert key headers) (HM.insert key (boolToText value) <$> rows)
+    merge csv key (Bool value) = mergeField csv key (boolToText value)
     merge (Csv headers rows) key Null = Csv (HS.insert key headers) rows
-    merge (Csv headers rows) key (Number value) =
-        Csv (HS.insert key headers) (HM.insert key (sciToText value) <$> rows)
-    merge csv key object @ (Object _) = nest csv key (toCsv object)
-    merge (Csv headers rows) key (String value) =
+    merge csv key (Number value) = mergeField csv key (sciToText value)
+    merge csv key (String value) = mergeField csv key value
+    merge csv key nestedValue = nest csv key (toCsv nestedValue)
+
+    mergeField (Csv headers rows) key value =
         Csv (HS.insert key headers) (HM.insert key value <$> rows)
 
 nest :: Csv -> Text -> Csv -> Csv
