@@ -19,6 +19,18 @@ spec = do
         it "returns an empty csv for and empty object" $ do
             convert "{}" `shouldBe` Right "\r\n\r\n"
 
+        it "handles a bare boolean" $ do
+            convert "true" `shouldBe` Right "True\r\n"
+
+        it "handles a bare null" $ do
+            convert "null" `shouldBe` Right "\r\n"
+
+        it "handles a bare number" $ do
+            convert "123.45" `shouldBe` Right "123.45\r\n"
+
+        it "handles a bare string" $ do
+            convert "\"test\"" `shouldBe` Right "test\r\n"
+
         it "returns a single row for a simple object with a boolean value" $ do
             convert "{\"one\": \"first\", \"two\": true}"
                 `shouldBe` Right "two,one\r\nTrue,first\r\n"

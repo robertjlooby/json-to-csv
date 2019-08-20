@@ -35,7 +35,11 @@ encode (Csv headers body) = encodeByName encodedHeaders encodedBody
 
 toCsv :: Value -> Csv
 toCsv (Array array) = foldMap toCsv array
+toCsv (Bool value) = Csv (HS.singleton (T.pack . show $ value)) []
+toCsv Null = mempty
+toCsv (Number value) = Csv (HS.singleton (T.pack . show $ value)) []
 toCsv (Object object) = objectToCsv object
+toCsv (String value) = Csv (HS.singleton value) []
 
 objectToCsv :: Object -> Csv
 objectToCsv object = HM.foldlWithKey' merge (Csv mempty [ mempty ]) object
