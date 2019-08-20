@@ -26,7 +26,7 @@ spec = do
             convert "null" `shouldBe` Right "\r\n"
 
         it "handles a bare number" $ do
-            convert "123.45" `shouldBe` Right "123.45\r\n"
+            convert "123456789" `shouldBe` Right "123456789\r\n"
 
         it "handles a bare string" $ do
             convert "\"test\"" `shouldBe` Right "test\r\n"
@@ -40,8 +40,8 @@ spec = do
                 `shouldBe` Right "two,one\r\n,first\r\n"
 
         it "returns a single row for a simple object with a number value" $ do
-            convert "{\"one\": \"first\", \"two\": 123.45}"
-                `shouldBe` Right "two,one\r\n123.45,first\r\n"
+            convert "{\"one\": \"first\", \"two\": 1.23456789}"
+                `shouldBe` Right "two,one\r\n1.23456789,first\r\n"
 
         it "returns a single row for a simple object with a string value" $ do
             convert "{\"one\": \"first\", \"two\": \"second\"}"
@@ -55,8 +55,7 @@ spec = do
         it "handles arrays of objects of varying shapes" $ do
             convert
                 "[{\"one\": 1, \"two\": 2}, {\"one\": 11, \"three\": 33}, {\"one\": 111}]"
-                `shouldBe` Right
-                    "two,one,three\r\n2.0,1.0,\r\n,11.0,33.0\r\n,111.0,\r\n"
+                `shouldBe` Right "two,one,three\r\n2,1,\r\n,11,33\r\n,111,\r\n"
 
         it "handles an array as an object value" $ do
             convert

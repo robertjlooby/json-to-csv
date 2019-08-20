@@ -9,6 +9,8 @@ import qualified Data.ByteString.Lazy as B
 import           Data.Csv ( encodeByName, header )
 import           Data.HashMap.Strict as HM
 import           Data.HashSet as HS
+import           Data.Scientific
+       ( FPFormat(Fixed), Scientific, formatScientific, isInteger )
 import           Data.Text as T
 import           Data.Text.Encoding ( encodeUtf8 )
 
@@ -37,7 +39,7 @@ toCsv :: Value -> Csv
 toCsv (Array array) = foldMap toCsv array
 toCsv (Bool value) = Csv (HS.singleton $ boolToText value) []
 toCsv Null = mempty
-toCsv (Number value) = Csv (HS.singleton (T.pack . show $ value)) []
+toCsv (Number value) = Csv (HS.singleton $ sciToText value) []
 toCsv (Object object) = objectToCsv object
 toCsv (String value) = Csv (HS.singleton value) []
 
@@ -50,9 +52,7 @@ objectToCsv = HM.foldlWithKey' merge (Csv mempty [ mempty ])
         Csv (HS.insert key headers) (HM.insert key (boolToText value) <$> rows)
     merge (Csv headers rows) key Null = Csv (HS.insert key headers) rows
     merge (Csv headers rows) key (Number value) =
-        Csv
-            (HS.insert key headers)
-            (HM.insert key (T.pack . show $ value) <$> rows)
+        Csv (HS.insert key headers) (HM.insert key (sciToText value) <$> rows)
     merge csv key object @ (Object _) = nest csv key (toCsv object)
     merge (Csv headers rows) key (String value) =
         Csv (HS.insert key headers) (HM.insert key value <$> rows)
@@ -78,3 +78,11 @@ nest (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows) =
 boolToText :: Bool -> Text
 boolToText False = "FALSE"
 boolToText True = "TRUE"
+
+sciToText :: Scientific -> Text
+sciToText num = T.pack $ formatScientific Fixed decimalPlaces num
+  where
+    decimalPlaces =
+        if isInteger num
+            then Just 0
+            else Nothing
