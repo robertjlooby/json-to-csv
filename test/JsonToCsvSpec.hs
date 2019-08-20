@@ -63,3 +63,9 @@ spec = do
                 "{\"top\": \"level\", \"inner\": [{\"item\": \"first\", \"thing\": \"1\"}, {\"item\": \"second\", \"thing\": \"2\"}]}"
                 `shouldBe` Right
                     "inner->item,top,inner->thing\r\nfirst,level,1\r\nsecond,level,2\r\n"
+
+        it "handles an object as an object value" $ do
+            convert
+                "{\"top\": {\"inner\": \"thing\"}, \"other\": [{\"item\": \"first\"}, {\"item\": \"second\"}]}"
+                `shouldBe` Right
+                    "top->inner,other->item\r\nthing,first\r\nthing,second\r\n"

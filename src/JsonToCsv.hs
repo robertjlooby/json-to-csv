@@ -42,7 +42,7 @@ toCsv (Object object) = objectToCsv object
 toCsv (String value) = Csv (HS.singleton value) []
 
 objectToCsv :: Object -> Csv
-objectToCsv object = HM.foldlWithKey' merge (Csv mempty [ mempty ]) object
+objectToCsv = HM.foldlWithKey' merge (Csv mempty [ mempty ])
   where
     merge :: Csv -> T.Text -> Value -> Csv
     merge csv key array @ (Array _) = nest csv key (toCsv array)
@@ -55,6 +55,7 @@ objectToCsv object = HM.foldlWithKey' merge (Csv mempty [ mempty ]) object
         Csv
             (HS.insert key headers)
             (HM.insert key (T.pack . show $ value) <$> rows)
+    merge csv key object @ (Object _) = nest csv key (toCsv object)
     merge (Csv headers rows) key (String value) =
         Csv (HS.insert key headers) (HM.insert key value <$> rows)
 
