@@ -35,7 +35,7 @@ encode (Csv headers body) = encodeByName encodedHeaders encodedBody
 
 toCsv :: Value -> Csv
 toCsv (Array array) = foldMap toCsv array
-toCsv (Bool value) = Csv (HS.singleton (T.pack . show $ value)) []
+toCsv (Bool value) = Csv (HS.singleton $ boolToText value) []
 toCsv Null = mempty
 toCsv (Number value) = Csv (HS.singleton (T.pack . show $ value)) []
 toCsv (Object object) = objectToCsv object
@@ -47,9 +47,7 @@ objectToCsv = HM.foldlWithKey' merge (Csv mempty [ mempty ])
     merge :: Csv -> T.Text -> Value -> Csv
     merge csv key array @ (Array _) = nest csv key (toCsv array)
     merge (Csv headers rows) key (Bool value) =
-        Csv
-            (HS.insert key headers)
-            (HM.insert key (T.pack . show $ value) <$> rows)
+        Csv (HS.insert key headers) (HM.insert key (boolToText value) <$> rows)
     merge (Csv headers rows) key Null = Csv (HS.insert key headers) rows
     merge (Csv headers rows) key (Number value) =
         Csv
@@ -76,3 +74,7 @@ nest (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows) =
                           HM.insert (nestLabel key') value innerRow) mempty
 
     nestedInnerRows = nestInnerRow <$> innerRows
+
+boolToText :: Bool -> Text
+boolToText False = "FALSE"
+boolToText True = "TRUE"

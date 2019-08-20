@@ -20,7 +20,7 @@ spec = do
             convert "{}" `shouldBe` Right "\r\n\r\n"
 
         it "handles a bare boolean" $ do
-            convert "true" `shouldBe` Right "True\r\n"
+            convert "true" `shouldBe` Right "TRUE\r\n"
 
         it "handles a bare null" $ do
             convert "null" `shouldBe` Right "\r\n"
@@ -33,7 +33,7 @@ spec = do
 
         it "returns a single row for a simple object with a boolean value" $ do
             convert "{\"one\": \"first\", \"two\": true}"
-                `shouldBe` Right "two,one\r\nTrue,first\r\n"
+                `shouldBe` Right "two,one\r\nTRUE,first\r\n"
 
         it "returns a single row for a simple object with a null value" $ do
             convert "{\"one\": \"first\", \"two\": null}"
