@@ -64,7 +64,7 @@ nest (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows) =
         | outerRow <- outerRows, innerRow <- nestedInnerRows
         ]
   where
-    nestLabel label = key <> "->" <> label
+    nestLabel label = key <> "." <> label
 
     nestedInnerHeaders = HS.map nestLabel innerHeaders
 

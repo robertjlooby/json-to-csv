@@ -86,7 +86,7 @@ As an example from [this football dataset](https://raw.githubusercontent.com/ope
 
 would convert to:
 
-| name | rounds->name | rounds->matches->date | rounds->matches->team1->key | rounds->matches->team1->name | rounds->matches->team1->code | rounds->matches->team2->key | rounds->matches->team2->name | rounds->matches->team2->code | rounds->matches->score1 | rounds->matches->score2 |
+| name | rounds.name | rounds.matches.date | rounds.matches.team1.key | rounds.matches.team1.name | rounds.matches.team1.code | rounds.matches.team2.key | rounds.matches.team2.name | rounds.matches.team2.code | rounds.matches.score1 | rounds.matches.score2 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | English Premier League 2016/17 | Matchday 1 | 2016-08-13 | hull | Hull City | HUL | leicester | Leicester City | LEI | 2 | 1 |
 | English Premier League 2016/17 | Matchday 1 | 2016-08-13 | burnley | Burnley | BUR | swansea | Swansea | SWA | 0 | 1 |
