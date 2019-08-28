@@ -63,6 +63,12 @@ spec = do
                 `shouldBe` Right
                     "inner.item,inner.thing,top\r\nfirst,1,level\r\nsecond,2,level\r\n"
 
+        it "handles an array with non-object values as an object value" $ do
+            convert
+                "{\"top\": \"level\", \"inner\": [\"first\", \"second\", 1, [\"double\"], false, null]}"
+                `shouldBe` Right
+                    "inner[5],inner[0],inner[4],inner[2],inner[3][0],top,inner[1]\r\n,first,FALSE,1,double,level,second\r\n"
+
         it "handles an object as an object value" $ do
             convert
                 "{\"top\": {\"inner\": \"thing\"}, \"other\": [{\"item\": \"first\"}, {\"item\": \"second\"}]}"

@@ -4,17 +4,19 @@ module JsonToCsv
   ( convert
   ) where
 
-import           Data.Aeson ( Object, Value(..), eitherDecode )
+import           Data.Aeson ( Array, Object, Value(..), eitherDecode )
 import qualified Data.ByteString.Lazy as B
 import           Data.Csv ( encodeByName, header )
-import           Data.HashMap.Strict as HM
-import           Data.HashSet as HS
+import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
 import           Data.Scientific
        ( FPFormat(Fixed), Scientific, formatScientific, isInteger )
-import           Data.Text as T
+import qualified Data.Text as T
 import           Data.Text.Encoding ( encodeUtf8 )
+import qualified Data.Vector as V
 
 data Csv = Csv (HS.HashSet T.Text) [HM.HashMap T.Text T.Text]
+    deriving Show
 
 instance Semigroup Csv where
     (Csv headers rows) <> (Csv headers' rows') =
@@ -31,7 +33,7 @@ encode (Csv headers body) = encodeByName encodedHeaders encodedBody
   where
     encodedHeaders = header $ encodeUtf8 <$> HS.toList headers
 
-    emptyRow = const mempty <$> toMap headers
+    emptyRow = const mempty <$> HS.toMap headers
 
     encodedBody = flip HM.union emptyRow <$> body
 
@@ -47,17 +49,49 @@ objectToCsv :: Object -> Csv
 objectToCsv = HM.foldlWithKey' merge (Csv mempty [ mempty ])
   where
     merge :: Csv -> T.Text -> Value -> Csv
+    merge csv key (Array array) = nestArray key csv array
     merge csv key (Bool value) = mergeField csv key (boolToText value)
     merge (Csv headers rows) key Null = Csv (HS.insert key headers) rows
     merge csv key (Number value) = mergeField csv key (sciToText value)
+    merge csv key (Object object) = nestObject csv key (objectToCsv object)
     merge csv key (String value) = mergeField csv key value
-    merge csv key nestedValue = nest csv key (toCsv nestedValue)
 
     mergeField (Csv headers rows) key value =
         Csv (HS.insert key headers) (HM.insert key value <$> rows)
 
-nest :: Csv -> Text -> Csv -> Csv
-nest (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows) =
+nestArray :: T.Text -> Csv -> Array -> Csv
+nestArray key initialCsv initialArray =
+    nestObject
+        csvWithNonObjects
+        key
+        (toCsv . Array . fmap Object $ nestedObjects)
+  where
+    ( csvWithNonObjects, nestedObjects ) =
+        V.ifoldl' merge ( initialCsv, mempty ) initialArray
+
+    merge :: (Csv, V.Vector Object) -> Int -> Value -> (Csv, V.Vector Object)
+    merge ( csv, objects ) index (Array array) =
+        ( nestArray (fieldKey index) csv array, objects )
+    merge ( csv, objects ) index (Bool value) =
+        ( mergeField csv index (boolToText value), objects )
+    merge ( csv, objects ) _ (Object object) = ( csv, V.snoc objects object )
+    merge ( csv, objects ) index Null = ( mergeField csv index "", objects )
+    merge ( csv, objects ) index (Number value) =
+        ( mergeField csv index (sciToText value), objects )
+    merge ( csv, objects ) index (String value) =
+        ( mergeField csv index value, objects )
+
+    fieldKey index = key <> "[" <> (T.pack . show $ index) <> "]"
+
+    mergeField (Csv headers rows) index value =
+        Csv
+            (HS.insert (fieldKey index) headers)
+            (HM.insert (fieldKey index) value <$> rows)
+
+nestObject :: Csv -> T.Text -> Csv -> Csv
+nestObject (Csv outerHeaders outerRows) _ (Csv _ []) =
+    Csv outerHeaders outerRows
+nestObject (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows) =
     Csv
         (outerHeaders <> nestedInnerHeaders)
         [ HM.union outerRow innerRow
@@ -74,11 +108,11 @@ nest (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows) =
 
     nestedInnerRows = nestInnerRow <$> innerRows
 
-boolToText :: Bool -> Text
+boolToText :: Bool -> T.Text
 boolToText False = "FALSE"
 boolToText True = "TRUE"
 
-sciToText :: Scientific -> Text
+sciToText :: Scientific -> T.Text
 sciToText num = T.pack $ formatScientific Fixed decimalPlaces num
   where
     decimalPlaces =
