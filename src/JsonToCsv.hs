@@ -38,7 +38,7 @@ encode (Csv headers body) = encodeByName encodedHeaders encodedBody
     encodedBody = flip HM.union emptyRow <$> body
 
 toCsv :: Value -> Csv
-toCsv (Array array) = foldMap toCsv array
+toCsv (Array array) = nestArray mempty (Csv mempty [ mempty ]) array
 toCsv (Bool value) = Csv (HS.singleton $ boolToText value) []
 toCsv Null = mempty
 toCsv (Number value) = Csv (HS.singleton $ sciToText value) []
@@ -61,10 +61,7 @@ objectToCsv = HM.foldlWithKey' merge (Csv mempty [ mempty ])
 
 nestArray :: T.Text -> Csv -> Array -> Csv
 nestArray key initialCsv initialArray =
-    nestObject
-        csvWithNonObjects
-        key
-        (toCsv . Array . fmap Object $ nestedObjects)
+    nestObject csvWithNonObjects key (foldMap objectToCsv nestedObjects)
   where
     ( csvWithNonObjects, nestedObjects ) =
         V.ifoldl' merge ( initialCsv, mempty ) initialArray
@@ -89,18 +86,21 @@ nestArray key initialCsv initialArray =
             (HM.insert (fieldKey index) value <$> rows)
 
 nestObject :: Csv -> T.Text -> Csv -> Csv
-nestObject (Csv outerHeaders outerRows) _ (Csv _ []) =
-    Csv outerHeaders outerRows
-nestObject (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows) =
-    Csv
-        (outerHeaders <> nestedInnerHeaders)
-        [ HM.union outerRow innerRow
-        | outerRow <- outerRows, innerRow <- nestedInnerRows
-        ]
+nestObject (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows)
+  | null innerRows = Csv nestedHeaders outerRows
+  | null outerRows = Csv nestedHeaders nestedInnerRows
+  | otherwise =
+      Csv
+          nestedHeaders
+          [ HM.union outerRow innerRow
+          | outerRow <- outerRows, innerRow <- nestedInnerRows
+          ]
   where
-    nestLabel label = key <> "." <> label
+    nestLabel label = case key of
+        "" -> label -- Don't prefix headers with `.`s for a top level array
+        _ -> key <> "." <> label
 
-    nestedInnerHeaders = HS.map nestLabel innerHeaders
+    nestedHeaders = outerHeaders <> HS.map nestLabel innerHeaders
 
     nestInnerRow =
         HM.foldlWithKey' (\innerRow key' value ->
