@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module JsonToCsv
@@ -6,16 +7,56 @@ module JsonToCsv
 
 import           Data.Aeson ( Array, Object, Value(..), eitherDecode )
 import qualified Data.ByteString.Lazy as B
-import           Data.Csv ( encodeByName, header )
+import qualified Data.Csv as Cassava
 import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
+import           Data.Hashable ( Hashable )
 import           Data.Scientific
        ( FPFormat(Fixed), Scientific, formatScientific, isInteger )
+import qualified Data.Set as S
 import qualified Data.Text as T
 import           Data.Text.Encoding ( encodeUtf8 )
 import qualified Data.Vector as V
+import           GHC.Generics ( Generic )
 
-data Csv = Csv (HS.HashSet T.Text) [HM.HashMap T.Text T.Text]
+data Header
+    = Key T.Text Header
+    | Index Int Header
+    | NilHeader
+    deriving ( Generic, Eq, Ord, Show )
+
+instance Semigroup Header where
+    NilHeader <> header = header
+    header <> NilHeader = header
+    Key key header <> header' = Key key (header <> header')
+    Index i header <> header' = Index i (header <> header')
+
+instance Monoid Header where
+    mempty = NilHeader
+
+instance Hashable Header
+
+instance Cassava.ToField Header where
+    toField = encodeUtf8 . headerToText
+
+class AsHeader a where
+    asHeader :: a -> Header
+
+instance AsHeader Int where
+    asHeader = flip Index NilHeader
+
+instance AsHeader T.Text where
+    asHeader = flip Key NilHeader
+
+headerToText :: Header -> T.Text
+headerToText = T.dropWhile (== '.') . headerToText'
+  where
+    headerToText' :: Header -> T.Text
+    headerToText' (Key key rest) = "." <> key <> headerToText' rest
+    headerToText' (Index i rest) =
+        "[" <> (T.pack . show $ i) <> "]" <> headerToText' rest
+    headerToText' NilHeader = ""
+
+data Csv = Csv (S.Set Header) [HM.HashMap Header T.Text]
     deriving Show
 
 instance Semigroup Csv where
@@ -29,39 +70,44 @@ convert :: B.ByteString -> Either String B.ByteString
 convert input = encode . toCsv <$> eitherDecode input
 
 encode :: Csv -> B.ByteString
-encode (Csv headers body) = encodeByName encodedHeaders encodedBody
+encode (Csv headers rows) = Cassava.encodeByName encodedHeaders encodedRows
   where
-    encodedHeaders = header $ encodeUtf8 <$> HS.toList headers
+    encodedHeaders =
+        Cassava.header . fmap Cassava.toField . S.toAscList $ headers
 
-    emptyRow = const mempty <$> HS.toMap headers
+    emptyRow = S.foldl' (\hm k -> HM.insert k mempty hm) mempty headers
 
-    encodedBody = flip HM.union emptyRow <$> body
+    encodedRows = flip HM.union emptyRow <$> rows
 
 toCsv :: Value -> Csv
 toCsv (Array array) = nestArray mempty (Csv mempty [ mempty ]) array
-toCsv (Bool value) = Csv (HS.singleton $ boolToText value) []
+toCsv (Bool value) = Csv (S.singleton . asHeader . boolToText $ value) []
 toCsv Null = mempty
-toCsv (Number value) = Csv (HS.singleton $ sciToText value) []
+toCsv (Number value) = Csv (S.singleton . asHeader . sciToText $ value) []
 toCsv (Object object) = objectToCsv object
-toCsv (String value) = Csv (HS.singleton value) []
+toCsv (String value) = Csv (S.singleton . asHeader $ value) []
 
 objectToCsv :: Object -> Csv
 objectToCsv = HM.foldlWithKey' merge (Csv mempty [ mempty ])
   where
     merge :: Csv -> T.Text -> Value -> Csv
-    merge csv key (Array array) = nestArray key csv array
+    merge csv key (Array array) = nestArray (asHeader key) csv array
     merge csv key (Bool value) = mergeField csv key (boolToText value)
-    merge (Csv headers rows) key Null = Csv (HS.insert key headers) rows
+    merge (Csv headers rows) key Null =
+        Csv (S.insert (asHeader key) headers) rows
     merge csv key (Number value) = mergeField csv key (sciToText value)
-    merge csv key (Object object) = nestObject csv key (objectToCsv object)
+    merge csv key (Object object) =
+        nestObject csv (asHeader key) (objectToCsv object)
     merge csv key (String value) = mergeField csv key value
 
     mergeField (Csv headers rows) key value =
-        Csv (HS.insert key headers) (HM.insert key value <$> rows)
+        Csv
+            (S.insert (asHeader key) headers)
+            (HM.insert (asHeader key) value <$> rows)
 
-nestArray :: T.Text -> Csv -> Array -> Csv
-nestArray key initialCsv initialArray =
-    nestObject csvWithNonObjects key (foldMap objectToCsv nestedObjects)
+nestArray :: Header -> Csv -> Array -> Csv
+nestArray header initialCsv initialArray =
+    nestObject csvWithNonObjects header (foldMap objectToCsv nestedObjects)
   where
     ( csvWithNonObjects, nestedObjects ) =
         V.ifoldl' merge ( initialCsv, mempty ) initialArray
@@ -78,15 +124,15 @@ nestArray key initialCsv initialArray =
     merge ( csv, objects ) index (String value) =
         ( mergeField csv index value, objects )
 
-    fieldKey index = key <> "[" <> (T.pack . show $ index) <> "]"
+    fieldKey index = header <> (asHeader index)
 
     mergeField (Csv headers rows) index value =
         Csv
-            (HS.insert (fieldKey index) headers)
+            (S.insert (fieldKey index) headers)
             (HM.insert (fieldKey index) value <$> rows)
 
-nestObject :: Csv -> T.Text -> Csv -> Csv
-nestObject (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows)
+nestObject :: Csv -> Header -> Csv -> Csv
+nestObject (Csv outerHeaders outerRows) header (Csv innerHeaders innerRows)
   | null innerRows = Csv nestedHeaders outerRows
   | null outerRows = Csv nestedHeaders nestedInnerRows
   | otherwise =
@@ -96,11 +142,9 @@ nestObject (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows)
           | outerRow <- outerRows, innerRow <- nestedInnerRows
           ]
   where
-    nestLabel label = case key of
-        "" -> label -- Don't prefix headers with `.`s for a top level array
-        _ -> key <> "." <> label
+    nestLabel label = header <> label
 
-    nestedHeaders = outerHeaders <> HS.map nestLabel innerHeaders
+    nestedHeaders = outerHeaders <> S.map nestLabel innerHeaders
 
     nestInnerRow =
         HM.foldlWithKey' (\innerRow key' value ->

@@ -86,12 +86,12 @@ As an example from [this football dataset](https://raw.githubusercontent.com/ope
 
 would convert to:
 
-| name | rounds.name | rounds.matches.date | rounds.matches.team1.key | rounds.matches.team1.name | rounds.matches.team1.code | rounds.matches.team2.key | rounds.matches.team2.name | rounds.matches.team2.code | rounds.matches.score1 | rounds.matches.score2 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| English Premier League 2016/17 | Matchday 1 | 2016-08-13 | hull | Hull City | HUL | leicester | Leicester City | LEI | 2 | 1 |
-| English Premier League 2016/17 | Matchday 1 | 2016-08-13 | burnley | Burnley | BUR | swansea | Swansea | SWA | 0 | 1 |
-| English Premier League 2016/17 | Matchday 2 | 2016-08-19 | manutd | Manchester United | MUN | southampton | Southampton | SOU | 2 | 0 |
-| English Premier League 2016/17 | Matchday 2 | 2016-08-20 | stoke | Stoke City | STK | mancity | Manchester City | MCI | 1 | 4 |
+| name                           | rounds.matches.date | rounds.matches.score1 | rounds.matches.score2 | rounds.matches.team1.code | rounds.matches.team1.key | rounds.matches.team1.name | rounds.matches.team2.code | rounds.matches.team2.key | rounds.matches.team2.name | rounds.name |
+| ------------------------------ | ------------------- | --------------------- | --------------------- | ------------------------- | ------------------------ | ------------------------- | ------------------------- | ------------------------ | ------------------------- | ----------- |
+| English Premier League 2016/17 | 2016-08-13          | 2                     | 1                     | HUL                       | hull                     | Hull City                 | LEI                       | leicester                | Leicester City            | Matchday 1  |
+| English Premier League 2016/17 | 2016-08-13          | 0                     | 1                     | BUR                       | burnley                  | Burnley                   | SWA                       | swansea                  | Swansea                   | Matchday 1  |
+| English Premier League 2016/17 | 2016-08-19          | 2                     | 0                     | MUN                       | manutd                   | Manchester United         | SOU                       | southampton              | Southampton               | Matchday 2  |
+| English Premier League 2016/17 | 2016-08-20          | 1                     | 4                     | STK                       | stoke                    | Stoke City                | MCI                       | mancity                  | Manchester City           | Matchday 2  |
 
 ### Running
 

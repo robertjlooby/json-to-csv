@@ -33,19 +33,19 @@ spec = do
 
         it "returns a single row for a simple object with a boolean value" $ do
             convert "{\"one\": \"first\", \"two\": true}"
-                `shouldBe` Right "two,one\r\nTRUE,first\r\n"
+                `shouldBe` Right "one,two\r\nfirst,TRUE\r\n"
 
         it "returns a single row for a simple object with a null value" $ do
             convert "{\"one\": \"first\", \"two\": null}"
-                `shouldBe` Right "two,one\r\n,first\r\n"
+                `shouldBe` Right "one,two\r\nfirst,\r\n"
 
         it "returns a single row for a simple object with a number value" $ do
             convert "{\"one\": \"first\", \"two\": 1.23456789}"
-                `shouldBe` Right "two,one\r\n1.23456789,first\r\n"
+                `shouldBe` Right "one,two\r\nfirst,1.23456789\r\n"
 
         it "returns a single row for a simple object with a string value" $ do
             convert "{\"one\": \"first\", \"two\": \"second\"}"
-                `shouldBe` Right "two,one\r\nsecond,first\r\n"
+                `shouldBe` Right "one,two\r\nfirst,second\r\n"
 
         it "returns multiple rows for an array of objects" $ do
             convert
@@ -54,12 +54,13 @@ spec = do
 
         it "handles arrays of objects of varying shapes" $ do
             convert
-                "[{\"one\": 1, \"two\": 2}, {\"one\": 11, \"three\": 33}, {\"one\": 111}]"
-                `shouldBe` Right "two,one,three\r\n2,1,\r\n,11,33\r\n,111,\r\n"
+                "[{\"one\": 1, \"two\": 2, \"arr\": [0]}, {\"one\": 11, \"three\": 33}, {\"one\": 111, \"arr\": [0, 1, 2]}]"
+                `shouldBe` Right
+                    "arr[0],arr[1],arr[2],one,three,two\r\n0,,,1,,2\r\n,,,11,33,\r\n0,1,2,111,,\r\n"
 
         it "handles arrays of objects and other top level values" $ do
             convert "[123, {\"one\": 1, \"two\": 2}, \"value\"]"
-                `shouldBe` Right "two,[2],one,[0]\r\n2,value,1,123\r\n"
+                `shouldBe` Right "one,two,[0],[2]\r\n1,2,123,value\r\n"
 
         it "handles an array as an object value" $ do
             convert
@@ -69,9 +70,9 @@ spec = do
 
         it "handles an array with non-object values as an object value" $ do
             convert
-                "{\"top\": \"level\", \"inner\": [\"first\", \"second\", 1, [\"double\"], false, null]}"
+                "{\"top\": \"level\", \"inner\": [\"first\", \"second\", 1, [\"double\", \"nested\"], false, null]}"
                 `shouldBe` Right
-                    "inner[5],inner[0],inner[4],inner[2],inner[3][0],top,inner[1]\r\n,first,FALSE,1,double,level,second\r\n"
+                    "inner[0],inner[1],inner[2],inner[3][0],inner[3][1],inner[4],inner[5],top\r\nfirst,second,1,double,nested,FALSE,,level\r\n"
 
         it "handles an object as an object value" $ do
             convert
