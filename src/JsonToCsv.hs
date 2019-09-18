@@ -7,38 +7,43 @@ module JsonToCsv
 import           Data.Aeson ( Array, Object, Value(..), eitherDecode )
 import qualified Data.ByteString.Lazy as B
 import           Data.Csv ( encodeByName, header )
+import           Data.Foldable ( foldl', toList )
 import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
 import           Data.Scientific
        ( FPFormat(Fixed), Scientific, formatScientific, isInteger )
+import qualified Data.Set.Ordered as HS
 import qualified Data.Text as T
 import           Data.Text.Encoding ( encodeUtf8 )
 import qualified Data.Vector as V
+import           Debug.Trace
 
-data Csv = Csv (HS.HashSet T.Text) [HM.HashMap T.Text T.Text]
+data Csv = Csv (HS.OSet T.Text) [HM.HashMap T.Text T.Text]
     deriving Show
 
 instance Semigroup Csv where
     (Csv headers rows) <> (Csv headers' rows') =
-        Csv (headers <> headers') (rows <> rows')
+        Csv (headers HS.|<> headers') (rows <> rows')
 
 instance Monoid Csv where
-    mempty = Csv mempty mempty
+    mempty = Csv HS.empty mempty
 
 convert :: B.ByteString -> Either String B.ByteString
 convert input = encode . toCsv <$> eitherDecode input
 
 encode :: Csv -> B.ByteString
-encode (Csv headers body) = encodeByName encodedHeaders encodedBody
+encode (Csv headers rows) =
+    encodeByName
+        (trace ("encoded headers: " <> show encodedHeaders) encodedHeaders)
+        encodedRows
   where
-    encodedHeaders = header $ encodeUtf8 <$> HS.toList headers
+    encodedHeaders = header $ encodeUtf8 <$> toList headers
 
-    emptyRow = const mempty <$> HS.toMap headers
+    emptyRow = foldl' (\hm k -> HM.insert k mempty hm) mempty headers
 
-    encodedBody = flip HM.union emptyRow <$> body
+    encodedRows = flip HM.union emptyRow <$> rows
 
 toCsv :: Value -> Csv
-toCsv (Array array) = nestArray mempty (Csv mempty [ mempty ]) array
+toCsv (Array array) = nestArray mempty (Csv HS.empty [ mempty ]) array
 toCsv (Bool value) = Csv (HS.singleton $ boolToText value) []
 toCsv Null = mempty
 toCsv (Number value) = Csv (HS.singleton $ sciToText value) []
@@ -46,18 +51,18 @@ toCsv (Object object) = objectToCsv object
 toCsv (String value) = Csv (HS.singleton value) []
 
 objectToCsv :: Object -> Csv
-objectToCsv = HM.foldlWithKey' merge (Csv mempty [ mempty ])
+objectToCsv = HM.foldlWithKey' merge (Csv HS.empty [ mempty ])
   where
     merge :: Csv -> T.Text -> Value -> Csv
     merge csv key (Array array) = nestArray key csv array
     merge csv key (Bool value) = mergeField csv key (boolToText value)
-    merge (Csv headers rows) key Null = Csv (HS.insert key headers) rows
+    merge (Csv headers rows) key Null = Csv (key HS.<| headers) rows
     merge csv key (Number value) = mergeField csv key (sciToText value)
     merge csv key (Object object) = nestObject csv key (objectToCsv object)
     merge csv key (String value) = mergeField csv key value
 
     mergeField (Csv headers rows) key value =
-        Csv (HS.insert key headers) (HM.insert key value <$> rows)
+        Csv (key HS.<| headers) (HM.insert key value <$> rows)
 
 nestArray :: T.Text -> Csv -> Array -> Csv
 nestArray key initialCsv initialArray =
@@ -82,8 +87,11 @@ nestArray key initialCsv initialArray =
 
     mergeField (Csv headers rows) index value =
         Csv
-            (HS.insert (fieldKey index) headers)
+            ((fieldKey index) HS.<| headers)
             (HM.insert (fieldKey index) value <$> rows)
+
+osetMap :: Ord b => (a -> b) -> HS.OSet a -> HS.OSet b
+osetMap f = foldl' (\hs a -> hs HS.|> (f a)) HS.empty
 
 nestObject :: Csv -> T.Text -> Csv -> Csv
 nestObject (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows)
@@ -100,7 +108,7 @@ nestObject (Csv outerHeaders outerRows) key (Csv innerHeaders innerRows)
         "" -> label -- Don't prefix headers with `.`s for a top level array
         _ -> key <> "." <> label
 
-    nestedHeaders = outerHeaders <> HS.map nestLabel innerHeaders
+    nestedHeaders = outerHeaders HS.|<> osetMap nestLabel innerHeaders
 
     nestInnerRow =
         HM.foldlWithKey' (\innerRow key' value ->
