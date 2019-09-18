@@ -7,15 +7,17 @@ module JsonToCsv
 import           Data.Aeson ( Array, Object, Value(..), eitherDecode )
 import qualified Data.ByteString.Lazy as B
 import           Data.Csv ( encodeByName, header )
+import           Data.Foldable ( foldl', toList )
 import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
+import qualified Data.HashSet.InsOrd as HS
 import           Data.Scientific
        ( FPFormat(Fixed), Scientific, formatScientific, isInteger )
 import qualified Data.Text as T
 import           Data.Text.Encoding ( encodeUtf8 )
 import qualified Data.Vector as V
+import           Debug.Trace
 
-data Csv = Csv (HS.HashSet T.Text) [HM.HashMap T.Text T.Text]
+data Csv = Csv (HS.InsOrdHashSet T.Text) [HM.HashMap T.Text T.Text]
     deriving Show
 
 instance Semigroup Csv where
@@ -29,13 +31,16 @@ convert :: B.ByteString -> Either String B.ByteString
 convert input = encode . toCsv <$> eitherDecode input
 
 encode :: Csv -> B.ByteString
-encode (Csv headers body) = encodeByName encodedHeaders encodedBody
+encode (Csv headers rows) =
+    encodeByName
+        (trace ("encoded headers: " <> show encodedHeaders) encodedHeaders)
+        encodedRows
   where
-    encodedHeaders = header $ encodeUtf8 <$> HS.toList headers
+    encodedHeaders = header $ encodeUtf8 <$> toList headers
 
-    emptyRow = const mempty <$> HS.toMap headers
+    emptyRow = foldl' (\hm k -> HM.insert k mempty hm) mempty headers
 
-    encodedBody = flip HM.union emptyRow <$> body
+    encodedRows = flip HM.union emptyRow <$> rows
 
 toCsv :: Value -> Csv
 toCsv (Array array) = nestArray mempty (Csv mempty [ mempty ]) array

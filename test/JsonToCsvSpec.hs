@@ -54,24 +54,24 @@ spec = do
 
         it "handles arrays of objects of varying shapes" $ do
             convert
-                "[{\"one\": 1, \"two\": 2}, {\"one\": 11, \"three\": 33}, {\"one\": 111}]"
+                "[{\"one\": 1, \"two\": 2, \"arr\": [0]}, {\"one\": 11, \"three\": 33}, {\"one\": 111, \"arr\": [0, 1, 2]}]"
                 `shouldBe` Right "two,one,three\r\n2,1,\r\n,11,33\r\n,111,\r\n"
 
         it "handles arrays of objects and other top level values" $ do
             convert "[123, {\"one\": 1, \"two\": 2}, \"value\"]"
-                `shouldBe` Right "two,[2],one,[0]\r\n2,value,1,123\r\n"
+                `shouldBe` Right "[0],[2],two,one\r\n123,value,2,1\r\n"
 
         it "handles an array as an object value" $ do
             convert
                 "{\"top\": \"level\", \"inner\": [{\"item\": \"first\", \"thing\": \"1\"}, {\"item\": \"second\", \"thing\": \"2\"}]}"
                 `shouldBe` Right
-                    "inner.item,inner.thing,top\r\nfirst,1,level\r\nsecond,2,level\r\n"
+                    "top,inner.thing,inner.item\r\nlevel,1,first\r\nlevel,2,second\r\n"
 
         it "handles an array with non-object values as an object value" $ do
             convert
-                "{\"top\": \"level\", \"inner\": [\"first\", \"second\", 1, [\"double\"], false, null]}"
+                "{\"top\": \"level\", \"inner\": [\"first\", \"second\", 1, [\"double\", \"nested\"], false, null]}"
                 `shouldBe` Right
-                    "inner[5],inner[0],inner[4],inner[2],inner[3][0],top,inner[1]\r\n,first,FALSE,1,double,level,second\r\n"
+                    "top,inner[0],inner[1],inner[2],inner[3][0],inner[3][1],inner[4],inner[5]\r\nlevel,first,second,1,double,nested,FALSE,\r\n"
 
         it "handles an object as an object value" $ do
             convert
